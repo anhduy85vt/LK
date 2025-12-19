@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KHO CLOUD - ANH DUY TECH</title>
+    <title>KHO CLOUD PRO - ANH DUY TECH</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -24,7 +24,7 @@
             <div class="space-y-4">
                 <input id="username" type="text" placeholder="User" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
                 <input id="password" type="password" placeholder="Pass" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
-                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500 transition-all">Vào Kho</button>
+                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500 transition-all">Quản Lý Kho</button>
             </div>
         </form>
     </div>
@@ -33,7 +33,7 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
                 <h1 class="text-3xl font-black italic text-emerald-400 uppercase tracking-tighter">ANH DUY TECH</h1>
-                <p id="cloud-status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Đồng bộ trực tiếp Google Sheet</p>
+                <p id="cloud-status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Dữ liệu liên kết Google Sheet</p>
             </div>
             <div class="flex gap-2">
                 <button onclick="exportSupplierExcel()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-file-excel"></i> XUẤT BÁO CÁO</button>
@@ -48,10 +48,10 @@
         </div>
 
         <div class="glass rounded-[30px] overflow-hidden border border-white/5 shadow-2xl overflow-x-auto">
-            <table class="w-full text-left min-w-[800px]">
+            <table class="w-full text-left min-w-[900px]">
                 <thead class="bg-white/5 text-gray-400 text-[10px] uppercase font-black">
                     <tr>
-                        <th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5">Nhà Cung Cấp</th><th class="p-5 text-center">SL</th><th class="p-5">Giá</th><th class="p-5 text-center">Thành Tiền</th>
+                        <th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5">Nhà Cung Cấp</th><th class="p-5 text-center">SL</th><th class="p-5">Giá</th><th class="p-5 text-center">Thành Tiền</th><th class="p-5 text-right">Sửa/Xóa</th>
                     </tr>
                 </thead>
                 <tbody id="inventory-list" class="divide-y divide-white/5"></tbody>
@@ -61,8 +61,8 @@
 
     <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center z-[150] p-4 backdrop-blur-md">
         <form id="entry-form" onsubmit="saveData(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
-            <h2 class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
-            <div class="space-y-4">
+            <h2 id="modal-title" class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
+            <input type="hidden" id="f-index"> <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <input id="f-date" type="date" class="p-4 rounded-2xl outline-none text-sm" required>
                     <input id="f-qty" type="number" value="1" class="p-4 rounded-2xl outline-none text-sm text-center font-bold" required>
@@ -74,9 +74,9 @@
             </div>
             <div id="modal-actions" class="flex gap-4 mt-8">
                 <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400 uppercase text-xs">Hủy</button>
-                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm tracking-widest text-white">LƯU & HIỆN NGAY</button>
+                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm tracking-widest text-white">Lưu Dữ Liệu</button>
             </div>
-            <div id="modal-loading" class="hidden text-center py-4 font-bold text-emerald-500 animate-pulse italic">ĐANG ĐỒNG BỘ GOOGLE SHEET...</div>
+            <div id="modal-loading" class="hidden text-center py-4 font-bold text-emerald-500 animate-pulse italic">ĐANG CẬP NHẬT GOOGLE SHEET...</div>
         </form>
     </div>
 
@@ -84,8 +84,8 @@
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec"; 
         const AUTH = { user: "ADMIN", pass: "123456" };
         
-        let cloudData = [];    // Dữ liệu lấy từ Google
-        let pendingData = [];  // Dữ liệu vừa nhập xong (đang chờ Google ghi nhận)
+        let cloudData = [];    
+        let pendingData = [];  
 
         function handleLogin(e) {
             e.preventDefault();
@@ -93,13 +93,28 @@
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 fetchData();
-            } else { alert("Sai Pass!"); }
+            } else { alert("Sai Mật Khẩu!"); }
         }
 
         function openAddModal() {
-            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "Phiếu Nhập Hàng";
+            document.getElementById('f-index').value = "";
+            document.getElementById('entry-form').reset();
             document.getElementById('f-date').valueAsDate = new Date();
-            setTimeout(() => document.getElementById('f-name').focus(), 100);
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function openEditModal(index) {
+            const item = cloudData[index];
+            document.getElementById('modal-title').innerText = "Chỉnh Sửa Đơn Hàng";
+            document.getElementById('f-index').value = index + 2; // +2 vì Google Sheet bắt đầu từ 1 và có header
+            document.getElementById('f-date').value = item[0];
+            document.getElementById('f-name').value = item[1];
+            document.getElementById('f-supplier').value = item[2];
+            document.getElementById('f-qty').value = item[3];
+            document.getElementById('f-price').value = item[4] / 1000;
+            document.getElementById('f-note').value = item[5] || "";
+            document.getElementById('modal').classList.remove('hidden');
         }
         
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
@@ -111,12 +126,11 @@
                 const res = await fetch(CLOUD_URL + "?t=" + Date.now());
                 const json = await res.json();
                 if(json && json.length > 0) {
-                    cloudData = json.slice(1); // Bỏ tiêu đề
-                    // KIỂM TRA ĐỐI SOÁT: Nếu dòng nào ở pendingData đã có trong cloudData thì xóa bỏ ở pending
+                    cloudData = json.slice(1); 
                     pendingData = pendingData.filter(p => !cloudData.some(c => c[1] === p[1] && c[2] === p[2] && c[3] == p[3]));
                     renderTable();
                 }
-            } catch (err) { console.error("Lỗi tải:", err); }
+            } catch (err) { console.error(err); }
             if(icon) icon.classList.remove('loading-spin');
         }
 
@@ -125,37 +139,47 @@
             const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
-            // Hợp nhất dữ liệu mới nhập (ưu tiên nằm trên) và dữ liệu Cloud
-            const combined = [...pendingData, ...cloudData.slice().reverse()];
-
-            if (combined.length === 0) {
-                list.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500 font-bold uppercase">Đang đồng bộ dữ liệu...</td></tr>';
-                return;
-            }
-
-            combined.forEach(item => {
-                const [date, name, supplier, qty, price] = item;
-                if (String(name).toLowerCase().includes(search) || String(supplier).toLowerCase().includes(search)) {
-                    const total = (Number(qty) || 0) * (Number(price) || 0);
-                    const isPending = pendingData.includes(item);
-                    list.innerHTML += `
-                        <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all ${isPending ? 'row-pending' : ''}">
-                            <td class="p-5 text-gray-500 text-[11px] font-bold">${date} ${isPending ? '⏳' : ''}</td>
-                            <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${name}</td>
-                            <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${supplier}</td>
-                            <td class="p-5 text-center font-black text-white text-lg">${qty}</td>
-                            <td class="p-5 font-bold text-slate-300 tracking-tighter">${(Number(price)).toLocaleString()}đ</td>
-                            <td class="p-5 text-center font-black text-white tracking-tighter">${total.toLocaleString()}đ</td>
-                        </tr>`;
-                }
+            // Render dữ liệu đang chờ xử lý
+            pendingData.forEach(item => {
+                renderRow(list, item, true, -1, search);
             });
+
+            // Render dữ liệu từ Cloud
+            cloudData.slice().reverse().forEach((item, index) => {
+                const originalIndex = cloudData.length - 1 - index;
+                renderRow(list, item, false, originalIndex, search);
+            });
+        }
+
+        function renderRow(container, item, isPending, index, search) {
+            const [date, name, supplier, qty, price] = item;
+            if (String(name).toLowerCase().includes(search) || String(supplier).toLowerCase().includes(search)) {
+                const total = (Number(qty) || 0) * (Number(price) || 0);
+                container.innerHTML += `
+                    <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all ${isPending ? 'row-pending' : ''}">
+                        <td class="p-5 text-gray-500 text-[11px] font-bold">${date}</td>
+                        <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${name}</td>
+                        <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${supplier}</td>
+                        <td class="p-5 text-center font-black text-white text-lg">${qty}</td>
+                        <td class="p-5 font-bold text-slate-300 tracking-tighter">${(Number(price)).toLocaleString()}đ</td>
+                        <td class="p-5 text-center font-black text-white tracking-tighter">${total.toLocaleString()}đ</td>
+                        <td class="p-5 text-right">
+                            ${!isPending ? `
+                                <button onclick="openEditModal(${index})" class="text-blue-400 hover:text-white mr-3"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteRow(${index + 2})" class="text-red-500 hover:text-white"><i class="fas fa-trash"></i></button>
+                            ` : '⌛'}
+                        </td>
+                    </tr>`;
+            }
         }
 
         async function saveData(e) {
             e.preventDefault();
+            const editRowIndex = document.getElementById('f-index').value;
             
             const payload = {
-                action: "save",
+                action: editRowIndex ? "edit" : "save",
+                row: editRowIndex,
                 date: document.getElementById('f-date').value,
                 name: document.getElementById('f-name').value,
                 supplier: document.getElementById('f-supplier').value,
@@ -164,48 +188,46 @@
                 note: document.getElementById('f-note').value
             };
 
-            // BƯỚC 1: Đưa vào danh sách "Chờ" (Pending) để hiện lên bảng ngay lập tức
-            const newItem = [payload.date, payload.name, payload.supplier, payload.qty, payload.price, payload.note];
-            pendingData.unshift(newItem); 
-            renderTable();
+            if(!editRowIndex) {
+                pendingData.unshift([payload.date, payload.name, payload.supplier, payload.qty, payload.price, payload.note]);
+                renderTable();
+            }
 
             document.getElementById('modal-actions').classList.add('hidden');
             document.getElementById('modal-loading').classList.remove('hidden');
 
             try {
-                // BƯỚC 2: Gửi lên Google (mode: no-cors cho tốc độ cao nhất)
-                await fetch(CLOUD_URL, { 
-                    method: "POST", 
-                    mode: "no-cors", 
-                    body: JSON.stringify(payload) 
-                });
-                
-                // BƯỚC 3: Xóa form và đóng modal
+                await fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
                 setTimeout(() => {
                     closeModal();
                     document.getElementById('modal-actions').classList.remove('hidden');
                     document.getElementById('modal-loading').classList.add('hidden');
-                    document.getElementById('entry-form').reset();
-                    
-                    // Tự động refresh sau 5 giây để cập nhật trạng thái "Đã lưu Cloud"
-                    setTimeout(fetchData, 5000);
+                    fetchData();
                 }, 1000);
+            } catch (err) { alert("Lỗi!"); }
+        }
 
-            } catch (err) { alert("Lỗi kết nối Cloud!"); }
+        async function deleteRow(rowIdx) {
+            if(!confirm("Bạn có chắc chắn muốn xóa dòng này trên Google Sheet?")) return;
+            const payload = { action: "delete", row: rowIdx };
+            try {
+                await fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+                alert("Đang yêu cầu xóa...");
+                setTimeout(fetchData, 2000);
+            } catch (err) { alert("Lỗi xóa!"); }
         }
 
         function exportSupplierExcel() {
             const search = document.getElementById('search-input').value.trim();
             const combined = [...pendingData, ...cloudData].filter(item => 
-                String(item[1]).toLowerCase().includes(search.toLowerCase()) || 
-                String(item[2]).toLowerCase().includes(search.toLowerCase())
+                String(item[1]).toLowerCase().includes(search.toLowerCase()) || String(item[2]).toLowerCase().includes(search.toLowerCase())
             );
             if (combined.length === 0) return alert("Không có dữ liệu!");
             const ws = XLSX.utils.json_to_sheet(combined.map(i => ({
-                "Ngày Nhập": i[0], "Linh Kiện": i[1], "Nhà Cung Cấp": i[2], "Số Lượng": i[3], "Giá Nhập": i[4], "Thành Tiền": i[3]*i[4]
+                "Ngày Nhập": i[0], "Linh Kiện": i[1], "Nhà Cung Cấp": i[2], "Số Lượng": i[3], "Giá": i[4], "Thành Tiền": i[3]*i[4]
             })));
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Kho");
-            XLSX.writeFile(wb, `Kho_${search || 'TongHop'}.xlsx`);
+            XLSX.writeFile(wb, `Kho_ADTech.xlsx`);
         }
     </script>
 </body>
