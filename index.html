@@ -13,6 +13,7 @@
         input, textarea { background: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
         .loading-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .row-pending { border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.05); }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -23,7 +24,7 @@
             <div class="space-y-4">
                 <input id="username" type="text" placeholder="User" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
                 <input id="password" type="password" placeholder="Pass" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
-                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500">Đăng Nhập</button>
+                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500 transition-all">Vào Kho</button>
             </div>
         </form>
     </div>
@@ -32,10 +33,10 @@
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
                 <h1 class="text-3xl font-black italic text-emerald-400 uppercase tracking-tighter">ANH DUY TECH</h1>
-                <p class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Hệ thống Cloud chống mất dữ liệu</p>
+                <p id="cloud-status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Đồng bộ trực tiếp Google Sheet</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="exportSupplierExcel()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all"><i class="fas fa-file-excel"></i> XUẤT BÁO CÁO</button>
+                <button onclick="exportSupplierExcel()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-file-excel"></i> XUẤT BÁO CÁO</button>
                 <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"><i class="fas fa-plus"></i> NHẬP MỚI</button>
                 <button onclick="fetchData()" class="bg-white/5 p-3 rounded-2xl hover:bg-white/10 border border-white/10"><i id="refresh-icon" class="fas fa-sync-alt"></i></button>
             </div>
@@ -43,14 +44,14 @@
 
         <div class="relative mb-6">
             <i class="fas fa-search absolute left-4 top-4 text-gray-500"></i>
-            <input id="search-input" oninput="renderTable()" type="text" placeholder="Tìm tên linh kiện hoặc nhà cung cấp để xuất báo cáo..." class="w-full p-4 pl-12 rounded-2xl outline-none glass focus:border-emerald-500 font-bold">
+            <input id="search-input" oninput="renderTable()" type="text" placeholder="Tìm tên linh kiện hoặc nhà cung cấp..." class="w-full p-4 pl-12 rounded-2xl outline-none glass focus:border-emerald-500 font-bold">
         </div>
 
         <div class="glass rounded-[30px] overflow-hidden border border-white/5 shadow-2xl overflow-x-auto">
             <table class="w-full text-left min-w-[800px]">
                 <thead class="bg-white/5 text-gray-400 text-[10px] uppercase font-black">
                     <tr>
-                        <th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5">Nhà Cung Cấp</th><th class="p-5 text-center">SL</th><th class="p-5">Giá Nhập</th><th class="p-5 text-center text-emerald-400">Thành Tiền</th>
+                        <th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5">Nhà Cung Cấp</th><th class="p-5 text-center">SL</th><th class="p-5">Giá</th><th class="p-5 text-center">Thành Tiền</th>
                     </tr>
                 </thead>
                 <tbody id="inventory-list" class="divide-y divide-white/5"></tbody>
@@ -59,8 +60,8 @@
     </div>
 
     <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center z-[150] p-4 backdrop-blur-md">
-        <form onsubmit="saveData(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
-            <h2 class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng Cloud</h2>
+        <form id="entry-form" onsubmit="saveData(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
+            <h2 class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <input id="f-date" type="date" class="p-4 rounded-2xl outline-none text-sm" required>
@@ -69,13 +70,13 @@
                 <input id="f-name" type="text" placeholder="Tên linh kiện..." class="w-full p-4 rounded-2xl outline-none text-sm" required>
                 <input id="f-price" type="number" placeholder="Giá nhập (VD: 500)" class="w-full p-4 rounded-2xl outline-none text-sm text-emerald-400 font-black" required>
                 <input id="f-supplier" type="text" placeholder="Nhà cung cấp..." class="w-full p-4 rounded-2xl outline-none text-sm" required>
-                <textarea id="f-note" placeholder="Ghi chú thêm..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
+                <textarea id="f-note" placeholder="Ghi chú..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
             </div>
             <div id="modal-actions" class="flex gap-4 mt-8">
                 <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400 uppercase text-xs">Hủy</button>
-                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm tracking-widest text-white">Lưu & Hiển Thị</button>
+                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm tracking-widest text-white">LƯU & HIỆN NGAY</button>
             </div>
-            <div id="modal-loading" class="hidden text-center py-4 font-bold text-emerald-500 animate-pulse">ĐANG GỬI LÊN CLOUD...</div>
+            <div id="modal-loading" class="hidden text-center py-4 font-bold text-emerald-500 animate-pulse italic">ĐANG ĐỒNG BỘ GOOGLE SHEET...</div>
         </form>
     </div>
 
@@ -83,8 +84,8 @@
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec"; 
         const AUTH = { user: "ADMIN", pass: "123456" };
         
-        let allData = [];      // Dữ liệu từ Google
-        let localData = [];    // Dữ liệu mới vừa nhập (Chưa có trên Google)
+        let cloudData = [];    // Dữ liệu lấy từ Google
+        let pendingData = [];  // Dữ liệu vừa nhập xong (đang chờ Google ghi nhận)
 
         function handleLogin(e) {
             e.preventDefault();
@@ -92,14 +93,15 @@
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 fetchData();
-            } else { alert("Sai mật khẩu!"); }
+            } else { alert("Sai Pass!"); }
         }
 
         function openAddModal() {
             document.getElementById('modal').classList.remove('hidden');
             document.getElementById('f-date').valueAsDate = new Date();
-            document.getElementById('f-name').focus();
+            setTimeout(() => document.getElementById('f-name').focus(), 100);
         }
+        
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
         async function fetchData() {
@@ -107,16 +109,14 @@
             if(icon) icon.classList.add('loading-spin');
             try {
                 const res = await fetch(CLOUD_URL + "?t=" + Date.now());
-                const newData = await res.json();
-                if(newData && newData.length > 0) {
-                    allData = newData;
-                    // Lọc bỏ những dòng trong localData nếu nó đã xuất hiện trong allData
-                    localData = localData.filter(localItem => 
-                        !allData.some(cloudItem => cloudItem[1] === localItem[1] && cloudItem[0] === localItem[0] && cloudItem[3] == localItem[3])
-                    );
+                const json = await res.json();
+                if(json && json.length > 0) {
+                    cloudData = json.slice(1); // Bỏ tiêu đề
+                    // KIỂM TRA ĐỐI SOÁT: Nếu dòng nào ở pendingData đã có trong cloudData thì xóa bỏ ở pending
+                    pendingData = pendingData.filter(p => !cloudData.some(c => c[1] === p[1] && c[2] === p[2] && c[3] == p[3]));
                     renderTable();
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) { console.error("Lỗi tải:", err); }
             if(icon) icon.classList.remove('loading-spin');
         }
 
@@ -125,24 +125,22 @@
             const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
-            // Kết hợp dữ liệu Cloud và dữ liệu Mới nhập chưa đồng bộ
-            const cloudRows = allData.slice(1);
-            const combinedData = [...cloudRows, ...localData].reverse();
+            // Hợp nhất dữ liệu mới nhập (ưu tiên nằm trên) và dữ liệu Cloud
+            const combined = [...pendingData, ...cloudData.slice().reverse()];
 
-            if (combinedData.length === 0) {
-                list.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500 font-bold">ĐANG TẢI DỮ LIỆU...</td></tr>';
+            if (combined.length === 0) {
+                list.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500 font-bold uppercase">Đang đồng bộ dữ liệu...</td></tr>';
                 return;
             }
 
-            combinedData.forEach(item => {
+            combined.forEach(item => {
                 const [date, name, supplier, qty, price] = item;
                 if (String(name).toLowerCase().includes(search) || String(supplier).toLowerCase().includes(search)) {
                     const total = (Number(qty) || 0) * (Number(price) || 0);
-                    // Dòng nào từ localData thì cho màu hơi khác để nhận biết đang chờ đồng bộ
-                    const isLocal = localData.includes(item);
+                    const isPending = pendingData.includes(item);
                     list.innerHTML += `
-                        <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all ${isLocal ? 'bg-emerald-500/5' : ''}">
-                            <td class="p-5 text-gray-500 text-[11px] font-bold">${date} ${isLocal ? '⏳' : ''}</td>
+                        <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all ${isPending ? 'row-pending' : ''}">
+                            <td class="p-5 text-gray-500 text-[11px] font-bold">${date} ${isPending ? '⏳' : ''}</td>
                             <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${name}</td>
                             <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${supplier}</td>
                             <td class="p-5 text-center font-black text-white text-lg">${qty}</td>
@@ -166,50 +164,48 @@
                 note: document.getElementById('f-note').value
             };
 
-            // 1. LƯU VÀO BIẾN LOCAL RIÊNG (Không bao giờ bị fetchData ghi đè)
+            // BƯỚC 1: Đưa vào danh sách "Chờ" (Pending) để hiện lên bảng ngay lập tức
             const newItem = [payload.date, payload.name, payload.supplier, payload.qty, payload.price, payload.note];
-            localData.push(newItem); 
+            pendingData.unshift(newItem); 
             renderTable();
 
             document.getElementById('modal-actions').classList.add('hidden');
             document.getElementById('modal-loading').classList.remove('hidden');
 
             try {
-                // 2. GỬI LÊN GOOGLE
-                await fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
+                // BƯỚC 2: Gửi lên Google (mode: no-cors cho tốc độ cao nhất)
+                await fetch(CLOUD_URL, { 
+                    method: "POST", 
+                    mode: "no-cors", 
+                    body: JSON.stringify(payload) 
+                });
                 
-                // 3. Đóng modal ngay
+                // BƯỚC 3: Xóa form và đóng modal
                 setTimeout(() => {
                     closeModal();
                     document.getElementById('modal-actions').classList.remove('hidden');
                     document.getElementById('modal-loading').classList.add('hidden');
-                    ['f-name','f-price','f-supplier','f-note'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('entry-form').reset();
                     
-                    // Thử cập nhật lại dữ liệu từ Google mỗi 3 giây trong vòng 10 giây
-                    let refreshCount = 0;
-                    const interval = setInterval(() => {
-                        fetchData();
-                        refreshCount++;
-                        if (refreshCount > 3) clearInterval(interval);
-                    }, 3000);
-                }, 500);
+                    // Tự động refresh sau 5 giây để cập nhật trạng thái "Đã lưu Cloud"
+                    setTimeout(fetchData, 5000);
+                }, 1000);
 
-            } catch (err) { alert("Lỗi mạng!"); }
+            } catch (err) { alert("Lỗi kết nối Cloud!"); }
         }
 
         function exportSupplierExcel() {
             const search = document.getElementById('search-input').value.trim();
-            const cloudRows = allData.slice(1);
-            const combined = [...cloudRows, ...localData].filter(item => 
+            const combined = [...pendingData, ...cloudData].filter(item => 
                 String(item[1]).toLowerCase().includes(search.toLowerCase()) || 
                 String(item[2]).toLowerCase().includes(search.toLowerCase())
             );
             if (combined.length === 0) return alert("Không có dữ liệu!");
             const ws = XLSX.utils.json_to_sheet(combined.map(i => ({
-                "Ngày": i[0], "Linh Kiện": i[1], "Nhà Cung Cấp": i[2], "SL": i[3], "Giá Nhập": i[4], "Thành Tiền": i[3]*i[4]
+                "Ngày Nhập": i[0], "Linh Kiện": i[1], "Nhà Cung Cấp": i[2], "Số Lượng": i[3], "Giá Nhập": i[4], "Thành Tiền": i[3]*i[4]
             })));
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Kho");
-            XLSX.writeFile(wb, `BaoCao_${search || 'TongHop'}.xlsx`);
+            XLSX.writeFile(wb, `Kho_${search || 'TongHop'}.xlsx`);
         }
     </script>
 </body>
