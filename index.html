@@ -6,6 +6,7 @@
     <title>Kho Cloud - ANH DUY TECH</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -23,27 +24,35 @@
             <div class="space-y-4">
                 <input id="username" name="username" type="text" autocomplete="username" placeholder="User" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
                 <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Pass" class="w-full p-4 rounded-2xl outline-none text-center border border-white/10" required>
-                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500 transition-all">Vào Hệ Thống</button>
+                <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-emerald-500">Vào Hệ Thống</button>
             </div>
         </form>
     </div>
 
     <div id="main-content" class="max-w-7xl mx-auto hidden">
-        <div class="flex justify-between items-center mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
                 <h1 class="text-3xl font-black italic text-emerald-400 uppercase tracking-tighter">ANH DUY TECH</h1>
-                <p id="status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Đã kết nối Cloud</p>
+                <p id="status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-[0.2em]">● Dữ liệu trực tuyến (Google Cloud)</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all">
+                <button onclick="exportExcelBySupplier()" class="bg-white/5 hover:bg-emerald-600 px-5 py-3 rounded-2xl font-bold flex items-center gap-2 border border-white/10 transition-all text-sm">
+                    <i class="fas fa-file-excel"></i> XUẤT BÁO CÁO
+                </button>
+                <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20">
                     <i class="fas fa-plus"></i> NHẬP MỚI
                 </button>
                 <button onclick="location.reload()" class="bg-white/5 p-3 rounded-2xl hover:bg-white/10"><i class="fas fa-sync-alt"></i></button>
             </div>
         </div>
 
-        <div class="glass rounded-[30px] overflow-hidden border border-white/5 shadow-2xl">
-            <table class="w-full text-left">
+        <div class="relative mb-6">
+            <i class="fas fa-search absolute left-4 top-4 text-gray-500"></i>
+            <input id="search-input" oninput="renderTable()" type="text" placeholder="Tìm tên linh kiện hoặc nhà cung cấp để xuất báo cáo..." class="w-full p-4 pl-12 rounded-2xl outline-none glass focus:border-emerald-500 font-bold">
+        </div>
+
+        <div class="glass rounded-[30px] overflow-hidden border border-white/5 shadow-2xl overflow-x-auto">
+            <table class="w-full text-left min-w-[800px]">
                 <thead class="bg-white/5 text-gray-400 text-[10px] uppercase font-black">
                     <tr>
                         <th class="p-5">Ngày</th>
@@ -51,10 +60,11 @@
                         <th class="p-5">Nhà Cung Cấp</th>
                         <th class="p-5 text-center">SL</th>
                         <th class="p-5">Giá Nhập (đ)</th>
+                        <th class="p-5 text-center">Thành Tiền</th>
                     </tr>
                 </thead>
                 <tbody id="inventory-list" class="divide-y divide-white/5">
-                    <tr><td colspan="5" class="p-10 text-center text-gray-500 uppercase font-bold animate-pulse">Đang tải dữ liệu từ Google Sheets...</td></tr>
+                    <tr><td colspan="6" class="p-10 text-center text-gray-500 uppercase font-bold animate-pulse">Đang tải dữ liệu...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -62,7 +72,7 @@
 
     <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center z-[150] p-4 backdrop-blur-md">
         <form onsubmit="saveData(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
-            <h2 class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
+            <h2 class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng Cloud</h2>
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <input id="f-date" type="date" class="p-4 rounded-2xl outline-none text-sm" required>
@@ -74,119 +84,149 @@
                     <span class="absolute right-4 top-4 text-gray-500 font-bold text-xs">.000đ</span>
                 </div>
                 <input id="f-supplier" type="text" placeholder="Nhà cung cấp..." class="w-full p-4 rounded-2xl outline-none text-sm" required>
-                <textarea id="f-note" placeholder="Ghi chú..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
+                <textarea id="f-note" placeholder="Ghi chú (Serial...)" class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
             </div>
             <div id="modal-actions" class="flex gap-4 mt-8">
                 <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400">HỦY</button>
-                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-emerald-500/30">LƯU LÊN CLOUD (ENTER)</button>
+                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-emerald-500/30">LƯU CLOUD (ENTER)</button>
             </div>
             <div id="modal-loading" class="hidden text-center py-4 font-bold text-emerald-500">
-                <i class="fas fa-circle-notch loading-spin mr-2"></i> ĐANG ĐẨY DỮ LIỆU...
+                <i class="fas fa-circle-notch loading-spin mr-2"></i> ĐANG LƯU...
             </div>
         </form>
     </div>
-<script>
-    const AUTH = { user: "ADMIN", pass: "123456" };
-    const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec"; 
 
-    function handleLogin() {
-        if(document.getElementById('username').value === AUTH.user && document.getElementById('password').value === AUTH.pass) {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
-            fetchData();
-        } else { alert("Sai mật khẩu!"); }
-    }
+    <script>
+        const AUTH = { user: "ADMIN", pass: "123456" };
+        const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec"; 
+        
+        let rawData = []; // Biến lưu trữ dữ liệu gốc từ Cloud
 
-    function openAddModal() {
-        document.getElementById('modal').classList.remove('hidden');
-        document.getElementById('f-date').valueAsDate = new Date();
-        document.getElementById('f-name').focus();
-    }
+        function handleLogin() {
+            if(document.getElementById('username').value === AUTH.user && document.getElementById('password').value === AUTH.pass) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                fetchData();
+            } else { alert("Sai mật khẩu!"); }
+        }
 
-    function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        function openAddModal() {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('f-date').valueAsDate = new Date();
+            document.getElementById('f-name').focus();
+        }
 
-    // HÀM LẤY DỮ LIỆU CÓ CHỐNG CACHE (ĐẢM BẢO LUÔN MỚI)
-    async function fetchData() {
-        const list = document.getElementById('inventory-list');
-        try {
-            // Thêm mã số ngẫu nhiên vào cuối link để ép trình duyệt tải mới hoàn toàn
-            const cacheBuster = "?t=" + Date.now();
-            const res = await fetch(CLOUD_URL + cacheBuster);
-            const data = await res.json();
-            
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        async function fetchData() {
+            try {
+                const res = await fetch(CLOUD_URL + "?t=" + Date.now());
+                rawData = await res.json();
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('inventory-list').innerHTML = '<tr><td colspan="6" class="p-10 text-center text-red-400">Không thể tải dữ liệu. Vui lòng thử lại!</td></tr>';
+            }
+        }
+
+        function renderTable() {
+            const list = document.getElementById('inventory-list');
+            const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
-            
-            if (!data || data.length <= 1) {
-                list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-500 font-bold uppercase">Chưa có dữ liệu nào</td></tr>';
+
+            if (!rawData || rawData.length <= 1) {
+                list.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-gray-500">Chưa có dữ liệu</td></tr>';
                 return;
             }
 
-            // Hiển thị và đảo ngược để đơn mới nhất lên đầu
-            data.slice(1).reverse().forEach(item => {
-                if (item[1]) {
+            // data.slice(1) để bỏ qua tiêu đề của Google Sheet
+            rawData.slice(1).reverse().forEach(item => {
+                const ngay = item[0] || '';
+                const ten = item[1] || '';
+                const ncc = item[2] || '';
+                const sl = Number(item[3]) || 0;
+                const gia = Number(item[4]) || 0;
+                const thanhTien = sl * gia;
+
+                if (ten.toLowerCase().includes(search) || ncc.toLowerCase().includes(search)) {
                     list.innerHTML += `
                         <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all">
-                            <td class="p-5 text-gray-500 text-[11px] font-bold">${item[0] || ''}</td>
-                            <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${item[1] || ''}</td>
-                            <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${item[2] || ''}</td>
-                            <td class="p-5 text-center font-black text-white text-lg">${item[3] || 0}</td>
-                            <td class="p-5 font-bold text-white tracking-tighter">${(Number(item[4]) || 0).toLocaleString()}đ</td>
+                            <td class="p-5 text-gray-500 text-[11px] font-bold">${ngay}</td>
+                            <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${ten}</td>
+                            <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${ncc}</td>
+                            <td class="p-5 text-center font-black text-white text-lg">${sl}</td>
+                            <td class="p-5 font-bold text-slate-300 tracking-tighter">${gia.toLocaleString()}đ</td>
+                            <td class="p-5 text-center font-black text-white tracking-tighter">${thanhTien.toLocaleString()}đ</td>
                         </tr>
                     `;
                 }
             });
-        } catch (err) {
-            console.error("Lỗi:", err);
         }
-    }
 
-    // HÀM LƯU DỮ LIỆU
-    async function saveData(e) {
-        e.preventDefault();
-        
-        const btnSave = document.querySelector("#modal-actions button[type='submit']");
-        document.getElementById('modal-actions').classList.add('hidden');
-        document.getElementById('modal-loading').classList.remove('hidden');
+        function exportExcelBySupplier() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            if (rawData.length <= 1) return alert("Không có dữ liệu để xuất!");
 
-        const payload = {
-            action: "save",
-            date: document.getElementById('f-date').value,
-            name: document.getElementById('f-name').value,
-            qty: document.getElementById('f-qty').value,
-            price: document.getElementById('f-price').value * 1000,
-            supplier: document.getElementById('f-supplier').value,
-            note: document.getElementById('f-note').value
-        };
+            // Lọc dữ liệu đang hiển thị trên bảng
+            const filtered = rawData.slice(1).filter(item => 
+                (item[1] || '').toLowerCase().includes(search) || 
+                (item[2] || '').toLowerCase().includes(search)
+            );
 
-        try {
-            // Dùng phương thức gửi dữ liệu hiện đại hơn
-            await fetch(CLOUD_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(payload)
-            });
+            if (filtered.length === 0) return alert("Không tìm thấy dữ liệu khớp với tên nhà cung cấp này!");
 
-            // Quan trọng: Đợi một chút để Google cập nhật xong hàng đợi dữ liệu
-            setTimeout(async () => {
-                // Xóa form
-                ['f-name','f-price','f-supplier','f-note'].forEach(id => document.getElementById(id).value = '');
-                closeModal();
-                document.getElementById('modal-actions').classList.remove('hidden');
-                document.getElementById('modal-loading').classList.add('hidden');
-                
-                // Ép tải lại dữ liệu mới
-                await fetchData();
-            }, 1000);
+            const dataToExport = filtered.map(item => ({
+                "Ngày Nhập": item[0],
+                "Tên Linh Kiện": item[1],
+                "Nhà Cung Cấp": item[2],
+                "Số Lượng": item[3],
+                "Giá Nhập": item[4],
+                "Thành Tiền": Number(item[3]) * Number(item[4]),
+                "Ghi Chú": item[5] || ""
+            }));
 
-        } catch (err) {
-            alert("Lỗi kết nối mạng, vui lòng thử lại!");
-            document.getElementById('modal-actions').classList.remove('hidden');
-            document.getElementById('modal-loading').classList.add('hidden');
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "BaoCaoKho");
+            
+            const fileName = search ? `Bao_Cao_${search}.xlsx` : `Bao_Cao_Tong_Hop.xlsx`;
+            XLSX.writeFile(wb, fileName);
         }
-    }
-</script>
+
+        async function saveData(e) {
+            e.preventDefault();
+            document.getElementById('modal-actions').classList.add('hidden');
+            document.getElementById('modal-loading').classList.remove('hidden');
+
+            const payload = {
+                action: "save",
+                date: document.getElementById('f-date').value,
+                name: document.getElementById('f-name').value,
+                qty: document.getElementById('f-qty').value,
+                price: document.getElementById('f-price').value * 1000,
+                supplier: document.getElementById('f-supplier').value,
+                note: document.getElementById('f-note').value
+            };
+
+            try {
+                await fetch(CLOUD_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    body: JSON.stringify(payload)
+                });
+
+                setTimeout(async () => {
+                    ['f-name','f-price','f-supplier','f-note'].forEach(id => document.getElementById(id).value = '');
+                    closeModal();
+                    document.getElementById('modal-actions').classList.remove('hidden');
+                    document.getElementById('modal-loading').classList.add('hidden');
+                    await fetchData(); // Tải lại bảng sau khi lưu
+                }, 1500);
+
+            } catch (err) {
+                alert("Lỗi lưu dữ liệu!");
+            }
+        }
+    </script>
 </body>
 </html>
-
-
