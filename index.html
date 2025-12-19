@@ -13,8 +13,8 @@
         input, textarea { background: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
         .loading-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .status-syncing { color: #f59e0b; font-style: italic; font-size: 10px; }
-        .status-done { color: #10b981; font-size: 10px; }
+        .row-pending { border-left: 4px solid #f59e0b; }
+        .row-synced { border-left: 4px solid #10b981; }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -22,20 +22,20 @@
     <div id="login-screen" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-4">
         <form onsubmit="handleLogin(event)" class="glass w-full max-w-sm p-10 rounded-[40px] text-center border-t-4 border-emerald-500 shadow-2xl">
             <h1 class="text-3xl font-black italic text-emerald-400 mb-2 uppercase">ANH DUY TECH</h1>
-            <input id="password" type="password" placeholder="Mật khẩu" class="w-full p-4 rounded-2xl outline-none text-center mb-4 border border-white/10" required>
-            <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500">Vào Hệ Thống</button>
+            <input id="password" type="password" placeholder="Mật khẩu (123456)" class="w-full p-4 rounded-2xl outline-none text-center mb-4 border border-white/10" required>
+            <button type="submit" class="w-full bg-emerald-600 py-4 rounded-2xl font-black uppercase hover:bg-emerald-500">Đăng Nhập</button>
         </form>
     </div>
 
     <div id="main-content" class="max-w-7xl mx-auto hidden">
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
             <div>
-                <h1 class="text-3xl font-black italic text-emerald-400 uppercase">ANH DUY TECH</h1>
-                <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-widest italic">● Chế độ: Lưu tạm Local & Auto-Sync (4s)</p>
+                <h1 class="text-3xl font-black italic text-emerald-400 uppercase tracking-tighter">ANH DUY TECH</h1>
+                <p id="sync-status" class="text-[10px] text-emerald-500 font-bold uppercase italic tracking-widest">● Hệ thống đồng bộ 4s</p>
             </div>
             <div class="flex gap-2">
-                <button onclick="exportBySupplier()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2"><i class="fas fa-file-excel"></i> XUẤT BÁO CÁO</button>
-                <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg"><i class="fas fa-plus"></i> NHẬP MỚI</button>
+                <button onclick="exportExcel()" class="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all"><i class="fas fa-file-excel"></i> XUẤT BÁO CÁO</button>
+                <button onclick="openModal()" class="bg-emerald-600 hover:bg-emerald-500 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20"><i class="fas fa-plus"></i> NHẬP MỚI</button>
                 <button onclick="fetchData()" class="bg-white/5 p-3 rounded-2xl hover:bg-white/10 border border-white/10"><i id="refresh-icon" class="fas fa-sync-alt"></i></button>
             </div>
         </div>
@@ -49,7 +49,7 @@
             <table class="w-full text-left min-w-[900px]">
                 <thead class="bg-white/5 text-gray-400 text-[10px] uppercase font-black">
                     <tr>
-                        <th class="p-5">Trạng thái</th><th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5 text-center">SL</th><th class="p-5">Giá</th><th class="p-5 text-center">Thành Tiền</th><th class="p-5 text-right">Sửa/Xóa</th>
+                        <th class="p-5">Ngày</th><th class="p-5">Linh Kiện</th><th class="p-5">Nhà Cung Cấp</th><th class="p-5 text-center">SL</th><th class="p-5">Giá Nhập</th><th class="p-5 text-center">Thành Tiền</th><th class="p-5 text-right">Thao Tác</th>
                     </tr>
                 </thead>
                 <tbody id="inventory-list" class="divide-y divide-white/5"></tbody>
@@ -59,7 +59,7 @@
 
     <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center z-[150] p-4 backdrop-blur-md">
         <form id="entry-form" onsubmit="handleSave(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
-            <h2 id="modal-title" class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Nhập Hàng</h2>
+            <h2 id="modal-title" class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
             <input type="hidden" id="f-id">
             <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
@@ -67,13 +67,13 @@
                     <input id="f-qty" type="number" class="p-4 rounded-2xl outline-none text-sm text-center font-bold" required>
                 </div>
                 <input id="f-name" type="text" placeholder="Tên linh kiện..." class="w-full p-4 rounded-2xl outline-none text-sm" required>
-                <input id="f-price" type="number" placeholder="Giá nhập (.000đ)" class="w-full p-4 rounded-2xl outline-none text-sm text-emerald-400 font-black" required>
+                <input id="f-price" type="number" placeholder="Giá nhập (.000 VNĐ)" class="w-full p-4 rounded-2xl outline-none text-sm text-emerald-400 font-black" required>
                 <input id="f-supplier" type="text" placeholder="Nhà cung cấp..." class="w-full p-4 rounded-2xl outline-none text-sm" required>
-                <textarea id="f-note" placeholder="Ghi chú..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
+                <textarea id="f-note" placeholder="Ghi chú thêm..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
             </div>
             <div class="flex gap-4 mt-8">
                 <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400 uppercase text-xs">Hủy</button>
-                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm">Lưu Ngay</button>
+                <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm">Lưu Dữ Liệu</button>
             </div>
         </form>
     </div>
@@ -82,34 +82,40 @@
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec";
         const PASS = "123456";
         
-        // Dữ liệu chính
-        let dataStore = JSON.parse(localStorage.getItem('adtech_local')) || [];
-        let syncTimers = {}; // Quản lý bộ đếm ngược 4s
+        // Dữ liệu Local
+        let inventory = JSON.parse(localStorage.getItem('adtech_data')) || [];
+        let syncTimers = {};
 
         function handleLogin(e) {
             e.preventDefault();
             if(document.getElementById('password').value === PASS) {
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
-                fetchData(); // Tải dữ liệu cũ từ Cloud về (nếu có)
                 renderTable();
-            } else { alert("Sai mật khẩu!"); }
+                fetchData(); 
+            } else { alert("Mật khẩu không đúng!"); }
         }
 
-        function openModal(editId = null) {
+        function openModal(id = null) {
             document.getElementById('entry-form').reset();
-            document.getElementById('f-id').value = editId || "";
-            document.getElementById('modal-title').innerText = editId ? "Sửa Đơn Hàng" : "Nhập Hàng";
-            
-            if(editId) {
-                const item = dataStore.find(x => x.id == editId);
-                document.getElementById('f-date').value = item.date;
-                document.getElementById('f-name').value = item.name;
-                document.getElementById('f-qty').value = item.qty;
-                document.getElementById('f-price').value = item.price / 1000;
-                document.getElementById('f-supplier').value = item.supplier;
-                document.getElementById('f-note').value = item.note || "";
+            const modalTitle = document.getElementById('modal-title');
+            const fId = document.getElementById('f-id');
+
+            if(id) {
+                modalTitle.innerText = "Sửa Đơn Hàng";
+                fId.value = id;
+                const item = inventory.find(x => x.id == id);
+                if(item) {
+                    document.getElementById('f-date').value = item.date;
+                    document.getElementById('f-name').value = item.name;
+                    document.getElementById('f-qty').value = item.qty;
+                    document.getElementById('f-price').value = item.price / 1000;
+                    document.getElementById('f-supplier').value = item.supplier;
+                    document.getElementById('f-note').value = item.note || "";
+                }
             } else {
+                modalTitle.innerText = "Nhập Hàng Mới";
+                fId.value = "";
                 document.getElementById('f-date').valueAsDate = new Date();
                 document.getElementById('f-qty').value = 1;
             }
@@ -120,9 +126,9 @@
 
         function handleSave(e) {
             e.preventDefault();
-            const id = document.getElementById('f-id').value || Date.now();
+            const id = document.getElementById('f-id').value || Date.now().toString();
             
-            const newItem = {
+            const itemData = {
                 id: id,
                 date: document.getElementById('f-date').value,
                 name: document.getElementById('f-name').value,
@@ -130,84 +136,43 @@
                 price: parseFloat(document.getElementById('f-price').value) * 1000,
                 supplier: document.getElementById('f-supplier').value,
                 note: document.getElementById('f-note').value,
-                status: 'pending' // Trạng thái chờ đồng bộ
+                synced: false
             };
 
-            // Lưu vào mảng local
-            const index = dataStore.findIndex(x => x.id == id);
-            if(index > -1) dataStore[index] = newItem;
-            else dataStore.unshift(newItem);
+            const index = inventory.findIndex(x => x.id == id);
+            if(index > -1) {
+                inventory[index] = itemData; // Cập nhật đơn cũ
+            } else {
+                inventory.unshift(itemData); // Thêm đơn mới lên đầu
+            }
 
-            saveToLocal();
+            saveLocal();
             renderTable();
             closeModal();
 
-            // Thiết lập bộ đếm 4 giây để đồng bộ
-            clearTimeout(syncTimers[id]);
+            // Đặt lịch đồng bộ sau 4 giây
+            if(syncTimers[id]) clearTimeout(syncTimers[id]);
             syncTimers[id] = setTimeout(() => syncToCloud(id), 4000);
         }
 
         async function syncToCloud(id) {
-            const item = dataStore.find(x => x.id == id);
+            const item = inventory.find(x => x.id == id);
             if(!item) return;
 
-            const payload = { action: "save", ...item };
-            
             try {
-                // Đổi trạng thái hiển thị
-                updateItemStatus(id, 'syncing');
+                await fetch(CLOUD_URL, { 
+                    method: "POST", 
+                    mode: "no-cors", 
+                    body: JSON.stringify({ action: "save", ...item }) 
+                });
                 
-                await fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
-                
-                // Thành công
-                updateItemStatus(id, 'done');
-            } catch (err) {
-                updateItemStatus(id, 'error');
-                console.error("Lỗi đồng bộ:", err);
-            }
-        }
-
-        function updateItemStatus(id, status) {
-            const item = dataStore.find(x => x.id == id);
-            if(item) {
-                item.status = status;
-                saveToLocal();
-                renderTable();
-            }
-        }
-
-        async function fetchData() {
-            const icon = document.getElementById('refresh-icon');
-            icon.classList.add('loading-spin');
-            try {
-                const res = await fetch(CLOUD_URL + "?t=" + Date.now());
-                const cloudItems = await res.json();
-                if(cloudItems && cloudItems.length > 1) {
-                    // Hợp nhất dữ liệu: Chỉ lấy những thứ local chưa có
-                    const formattedCloud = cloudItems.slice(1).map(row => ({
-                        date: row[0], name: row[1], supplier: row[2], 
-                        qty: row[3], price: row[4], note: row[5],
-                        id: row[6] || Date.now() + Math.random(), status: 'done'
-                    }));
-                    
-                    // Giữ lại các đơn đang 'pending' ở local, còn lại lấy từ cloud
-                    const pendingItems = dataStore.filter(x => x.status === 'pending' || x.status === 'syncing');
-                    dataStore = [...pendingItems, ...formattedCloud];
-                    saveToLocal();
+                const idx = inventory.findIndex(x => x.id == id);
+                if(idx > -1) {
+                    inventory[idx].synced = true;
+                    saveLocal();
                     renderTable();
                 }
-            } catch (e) { console.log("Không thể tải từ Cloud"); }
-            icon.classList.remove('loading-spin');
-        }
-
-        function deleteItem(id) {
-            if(confirm("Xóa dòng này?")) {
-                dataStore = dataStore.filter(x => x.id != id);
-                saveToLocal();
-                renderTable();
-                // Gửi lệnh xóa lên cloud (nếu cần)
-                fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({action: "delete", id: id}) });
-            }
+            } catch (err) { console.error("Lỗi đồng bộ ID:", id); }
         }
 
         function renderTable() {
@@ -215,24 +180,22 @@
             const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
-            dataStore.forEach(item => {
+            inventory.forEach(item => {
                 if(item.name.toLowerCase().includes(search) || item.supplier.toLowerCase().includes(search)) {
                     const total = item.qty * item.price;
-                    let statusHtml = item.status === 'done' ? '<span class="status-done">● Đã lưu Cloud</span>' : 
-                                   item.status === 'syncing' ? '<span class="status-syncing">● Đang đồng bộ...</span>' : 
-                                   '<span class="text-gray-500 text-[10px]">● Chờ gửi (4s)</span>';
-                    
                     list.innerHTML += `
-                        <tr class="hover:bg-white/[0.02] border-b border-white/5 transition-all">
-                            <td class="p-5">${statusHtml}</td>
-                            <td class="p-5 text-gray-500 text-[11px] font-bold">${item.date}</td>
-                            <td class="p-5 font-black text-emerald-400 uppercase">${item.name}</td>
-                            <td class="p-5 text-center font-black text-white">${item.qty}</td>
-                            <td class="p-5 font-bold text-slate-300">${item.price.toLocaleString()}đ</td>
-                            <td class="p-5 text-center font-black text-white">${total.toLocaleString()}đ</td>
-                            <td class="p-5 text-right flex justify-end gap-3">
-                                <button onclick="openModal('${item.id}')" class="text-blue-400"><i class="fas fa-edit"></i></button>
-                                <button onclick="deleteItem('${item.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>
+                        <tr class="${item.synced ? 'row-synced' : 'row-pending'} hover:bg-white/[0.02] border-b border-white/5">
+                            <td class="p-5 text-gray-500 text-[11px] font-bold">
+                                ${item.date} ${item.synced ? '✅' : '⏳'}
+                            </td>
+                            <td class="p-5 font-black text-emerald-400 uppercase tracking-tighter">${item.name}</td>
+                            <td class="p-5 font-bold text-blue-400 uppercase text-[11px]">${item.supplier}</td>
+                            <td class="p-5 text-center font-black text-white text-lg">${item.qty}</td>
+                            <td class="p-5 font-bold text-slate-300 tracking-tighter">${item.price.toLocaleString()}đ</td>
+                            <td class="p-5 text-center font-black text-white tracking-tighter">${total.toLocaleString()}đ</td>
+                            <td class="p-5 text-right">
+                                <button onclick="openModal('${item.id}')" class="text-blue-400 hover:text-white mr-3"><i class="fas fa-edit"></i></button>
+                                <button onclick="deleteItem('${item.id}')" class="text-red-500 hover:text-white"><i class="fas fa-trash"></i></button>
                             </td>
                         </tr>
                     `;
@@ -240,16 +203,49 @@
             });
         }
 
-        function saveToLocal() { localStorage.setItem('adtech_local', JSON.stringify(dataStore)); }
+        async function fetchData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('loading-spin');
+            try {
+                const res = await fetch(CLOUD_URL + "?t=" + Date.now());
+                const cloudRaw = await res.json();
+                if(cloudRaw && cloudRaw.length > 1) {
+                    // Chuyển dữ liệu cloud sang định dạng chuẩn
+                    const cloudData = cloudRaw.slice(1).map(r => ({
+                        date: r[0], name: r[1], supplier: r[2], qty: r[3], price: r[4], note: r[5], id: r[6] || (Math.random()*1000).toString(), synced: true
+                    }));
 
-        function exportBySupplier() {
+                    // Chỉ giữ lại những đơn Local chưa đồng bộ (synced = false)
+                    const pending = inventory.filter(x => !x.synced);
+                    
+                    // Gộp lại: Ưu tiên đơn đang đợi, sau đó đến dữ liệu từ Cloud
+                    inventory = [...pending, ...cloudData];
+                    saveLocal();
+                    renderTable();
+                }
+            } catch (e) { console.log("Cloud chưa có dữ liệu mới"); }
+            icon.classList.remove('loading-spin');
+        }
+
+        function deleteItem(id) {
+            if(confirm("Xóa đơn hàng này?")) {
+                inventory = inventory.filter(x => x.id != id);
+                saveLocal();
+                renderTable();
+                fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "delete", id: id }) });
+            }
+        }
+
+        function saveLocal() { localStorage.setItem('adtech_data', JSON.stringify(inventory)); }
+
+        function exportExcel() {
             const search = document.getElementById('search-input').value.trim();
-            const filtered = dataStore.filter(i => i.supplier.toLowerCase().includes(search.toLowerCase()));
+            const filtered = inventory.filter(i => i.supplier.toLowerCase().includes(search.toLowerCase()));
             const ws = XLSX.utils.json_to_sheet(filtered.map(i => ({
-                "Ngày": i.date, "Linh Kiện": i.name, "NCC": i.supplier, "SL": i.qty, "Giá": i.price, "Tổng": i.qty*i.price
+                "Ngày": i.date, "Linh Kiện": i.name, "NCC": i.supplier, "SL": i.qty, "Giá": i.price, "Thành Tiền": i.qty*i.price
             })));
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Kho");
-            XLSX.writeFile(wb, `BaoCao_${search || 'Kho'}.xlsx`);
+            XLSX.writeFile(wb, `Kho_AnhDuyTech_${search || 'TongHop'}.xlsx`);
         }
     </script>
 </body>
