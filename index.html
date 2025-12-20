@@ -4,17 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KHO CLOUD PRO - ANH DUY TECH</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
+    <script src="https://cdn.tailwindcss.com"></script> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"> <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> <style>
+        /* CẤU HÌNH GIAO DIỆN CHUNG */
         body { background: #0f172a; color: white; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
         .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         input, textarea { background: #1e293b !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
+        
+        /* HIỆU ỨNG XOAY KHI LOAD DỮ LIỆU */
         .loading-spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        /* PHÂN BIỆT DÒNG CHƯA ĐỒNG BỘ (CAM) VÀ ĐÃ ĐỒNG BỘ (XANH) */
         .row-pending { border-left: 4px solid #f59e0b; background: rgba(245, 158, 11, 0.03); }
         .row-synced { border-left: 4px solid #10b981; }
+        
+        /* ẨN CÁC NÚT ADMIN KHI ĐĂNG NHẬP GUEST */
         .is-guest .admin-only { display: none !important; }
     </style>
 </head>
@@ -67,8 +71,7 @@
     <div id="modal" class="fixed inset-0 bg-black/95 hidden flex items-center justify-center z-[150] p-4 backdrop-blur-md">
         <form id="entry-form" onsubmit="handleSave(event)" class="glass w-full max-w-md p-8 rounded-[40px] border-2 border-emerald-500/30">
             <h2 id="modal-title" class="text-2xl font-black mb-6 uppercase text-emerald-400 italic">Phiếu Nhập Hàng</h2>
-            <input type="hidden" id="f-id">
-            <div class="space-y-4">
+            <input type="hidden" id="f-id"> <div class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <input id="f-date" type="date" class="p-4 rounded-2xl outline-none text-sm" required>
                     <input id="f-qty" type="number" class="p-4 rounded-2xl outline-none text-sm text-center font-bold" required>
@@ -79,22 +82,28 @@
                 <textarea id="f-note" placeholder="Ghi chú..." class="w-full p-4 rounded-2xl outline-none text-sm h-16"></textarea>
             </div>
             <div class="flex gap-4 mt-8">
-                <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400 uppercase text-xs">Hủy</button>
+                <button type="button" onclick="closeModal()" class="flex-1 py-4 font-bold text-gray-400 uppercase text-xs hover:text-white transition-all">Hủy</button>
                 <button type="submit" class="flex-1 bg-emerald-600 py-4 rounded-2xl font-black uppercase text-sm">Lưu Dữ Liệu</button>
             </div>
         </form>
     </div>
 
     <script>
+        /**
+         * 1. CẤU HÌNH HỆ THỐNG
+         */
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbx8i4q-0HJmwSbHY3igg4OIrhHc4hM1HHW9W_NoYoQlaZ5Kihy39k9tbgbxIZGNcr8X/exec";
         const ADMIN_USER = "admin";
         const ADMIN_PASS = "123456";
         const GUEST_USER = "guest";
         
-        let inventory = JSON.parse(localStorage.getItem('adtech_data')) || [];
-        let isGuest = false;
-        let syncTimers = {};
+        let inventory = JSON.parse(localStorage.getItem('adtech_data')) || []; // Lấy dữ liệu từ bộ nhớ máy
+        let isGuest = false; // Biến kiểm tra quyền xem
+        let syncTimers = {}; // Quản lý bộ đếm 4 giây
 
+        /**
+         * 2. XỬ LÝ ĐĂNG NHẬP
+         */
         function handleLogin(e) {
             e.preventDefault();
             const u = document.getElementById('login-user').value.toLowerCase();
@@ -105,7 +114,7 @@
                 startApp();
             } else if(u === GUEST_USER) {
                 isGuest = true;
-                document.body.classList.add('is-guest');
+                document.body.classList.add('is-guest'); // Thêm class để ẩn nút admin
                 startApp();
             } else { alert("Thông tin đăng nhập không chính xác!"); }
         }
@@ -114,17 +123,22 @@
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
             renderTable();
-            fetchData();
+            fetchData(); // Tải dữ liệu từ Google về
         }
 
+        /**
+         * 3. HIỂN THỊ BẢNG DỮ LIỆU (QUAN TRỌNG: CÓ SẮP XẾP)
+         */
         function renderTable() {
             const list = document.getElementById('inventory-list');
             const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
+            // SẮP XẾP: Ngày mới nhất lên trên (b - a)
             let sortedData = [...inventory].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             sortedData.forEach(item => {
+                // Lọc dữ liệu theo ô tìm kiếm
                 if(item.name.toLowerCase().includes(search) || item.supplier.toLowerCase().includes(search)) {
                     const total = item.qty * item.price;
                     list.innerHTML += `
@@ -147,12 +161,15 @@
             });
         }
 
-        // Các hàm xử lý dữ liệu giữ nguyên từ bản trước
+        /**
+         * 4. MỞ FORM NHẬP/SỬA
+         */
         function openModal(id = null) {
             if(isGuest) return;
             document.getElementById('entry-form').reset();
             const fId = document.getElementById('f-id');
-            if(id) {
+            
+            if(id) { // Nếu có ID -> Chế độ Sửa
                 document.getElementById('modal-title').innerText = "Sửa Đơn Hàng";
                 fId.value = id;
                 const item = inventory.find(x => x.id == id);
@@ -164,7 +181,7 @@
                     document.getElementById('f-supplier').value = item.supplier;
                     document.getElementById('f-note').value = item.note || "";
                 }
-            } else {
+            } else { // Không có ID -> Chế độ Nhập mới
                 document.getElementById('modal-title').innerText = "Nhập Hàng Mới";
                 fId.value = "";
                 document.getElementById('f-date').valueAsDate = new Date();
@@ -175,9 +192,13 @@
 
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
+        /**
+         * 5. LƯU DỮ LIỆU VÀO LOCAL VÀ ĐỢI ĐỒNG BỘ
+         */
         function handleSave(e) {
             e.preventDefault();
             if(isGuest) return;
+
             const id = document.getElementById('f-id').value || Date.now().toString();
             const itemData = {
                 id: id,
@@ -187,26 +208,47 @@
                 price: parseFloat(document.getElementById('f-price').value) * 1000,
                 supplier: document.getElementById('f-supplier').value,
                 note: document.getElementById('f-note').value,
-                synced: false
+                synced: false // Đánh dấu là chưa lên Cloud
             };
+
             const index = inventory.findIndex(x => x.id == id);
-            if(index > -1) inventory[index] = itemData;
-            else inventory.unshift(itemData);
-            saveLocal(); renderTable(); closeModal();
+            if(index > -1) inventory[index] = itemData; // Cập nhật dòng cũ
+            else inventory.unshift(itemData); // Thêm dòng mới
+
+            saveLocal(); 
+            renderTable(); 
+            closeModal();
+
+            // KÍCH HOẠT ĐỒNG BỘ SAU 4 GIÂY
             if(syncTimers[id]) clearTimeout(syncTimers[id]);
             syncTimers[id] = setTimeout(() => syncToCloud(id), 4000);
         }
 
+        /**
+         * 6. GỬI DỮ LIỆU LÊN GOOGLE SHEET
+         */
         async function syncToCloud(id) {
             const item = inventory.find(x => x.id == id);
             if(!item || isGuest) return;
             try {
-                await fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "save", ...item }) });
+                await fetch(CLOUD_URL, { 
+                    method: "POST", 
+                    mode: "no-cors", 
+                    body: JSON.stringify({ action: "save", ...item }) 
+                });
+                // Nếu thành công, đánh dấu là đã đồng bộ
                 const idx = inventory.findIndex(x => x.id == id);
-                if(idx > -1) { inventory[idx].synced = true; saveLocal(); renderTable(); }
-            } catch (err) { console.error("Sync Error"); }
+                if(idx > -1) { 
+                    inventory[idx].synced = true; 
+                    saveLocal(); 
+                    renderTable(); 
+                }
+            } catch (err) { console.error("Lỗi đồng bộ Cloud"); }
         }
 
+        /**
+         * 7. TẢI DỮ LIỆU TỪ GOOGLE SHEET VỀ MÁY
+         */
         async function fetchData() {
             const icon = document.getElementById('refresh-icon');
             icon.classList.add('loading-spin');
@@ -215,32 +257,50 @@
                 const cloudRaw = await res.json();
                 if(cloudRaw && cloudRaw.length > 1) {
                     const cloudData = cloudRaw.slice(1).map(r => ({
-                        date: r[0], name: r[1], supplier: r[2], qty: r[3], price: r[4], note: r[5], id: r[6] || Math.random().toString(), synced: true
+                        date: r[0], name: r[1], supplier: r[2], qty: r[3], price: r[4], note: r[5], 
+                        id: r[6] || Math.random().toString(), synced: true
                     }));
+                    
+                    // Giữ lại những đơn chưa đồng bộ ở local
                     const pending = inventory.filter(x => !x.synced);
                     inventory = [...pending, ...cloudData];
-                    saveLocal(); renderTable();
+                    saveLocal(); 
+                    renderTable();
                 }
-            } catch (e) { console.log("Cloud update error"); }
+            } catch (e) { console.log("Lỗi tải dữ liệu"); }
             icon.classList.remove('loading-spin');
         }
 
+        /**
+         * 8. XÓA DỮ LIỆU
+         */
         function deleteItem(id) {
-            if(isGuest || !confirm("Xóa dòng này?")) return;
+            if(isGuest || !confirm("Xóa dòng này vĩnh viễn?")) return;
             inventory = inventory.filter(x => x.id != id);
-            saveLocal(); renderTable();
-            fetch(CLOUD_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ action: "delete", id: id }) });
+            saveLocal(); 
+            renderTable();
+            // Gửi lệnh xóa lên Google Sheet
+            fetch(CLOUD_URL, { 
+                method: "POST", 
+                mode: "no-cors", 
+                body: JSON.stringify({ action: "delete", id: id }) 
+            });
         }
 
+        // Lưu mảng inventory vào LocalStorage của trình duyệt
         function saveLocal() { localStorage.setItem('adtech_data', JSON.stringify(inventory)); }
 
+        /**
+         * 9. XUẤT FILE EXCEL
+         */
         function exportExcel() {
             const search = document.getElementById('search-input').value.trim();
             const filtered = inventory.filter(i => i.name.toLowerCase().includes(search.toLowerCase()) || i.supplier.toLowerCase().includes(search.toLowerCase()));
             const ws = XLSX.utils.json_to_sheet(filtered.map(i => ({
                 "Ngày": i.date, "Linh Kiện": i.name, "NCC": i.supplier, "SL": i.qty, "Giá": i.price, "Tổng": i.qty*i.price
             })));
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Kho");
+            const wb = XLSX.utils.book_new(); 
+            XLSX.utils.book_append_sheet(wb, ws, "Kho");
             XLSX.writeFile(wb, `ADTech_${search || 'Full'}.xlsx`);
         }
     </script>
